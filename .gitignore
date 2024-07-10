@@ -1,0 +1,8 @@
+*.tsbuildinfo
+.DS_Store
+.env.local
+.eslintcache
+.next/
+node_modules/
+package-lock.json
+yarn.lock

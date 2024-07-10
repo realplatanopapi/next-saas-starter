@@ -1,0 +1,127 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+env:
+  DOCKER_IMAGE_NAME: ghcr.io/${{ github.repository }}
+  DOCKER_IMAGE_TAG: ${{ github.sha }}
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: app
+    env:
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose up -d
+      - uses: pnpm/action-setup@v2
+        with:
+          package_json_file: app/package.json
+          run_install: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: pnpm install
+      - run: pnpm format:check
+      - run: pnpm db:migrate
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/build-push-action@v5
+        with:
+          push: true
+          tags: ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+          context: app
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  smoke-test:
+    needs:
+      - build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    env:
+      NODE_ENV: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: docker pull ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+      - run: docker compose up -d
+      - name: Start server
+        run: docker run --name=server --network host --detach -p 3000:3000 --env NODE_ENV=test ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }} pnpm start
+      - name: Check auth page
+        uses: jtalk/url-health-check-action@v3
+        with:
+          url: http://localhost:3000/auth
+          follow-redirect: true
+          max-attempts: 3
+          retry-delay: 5s
+          retry-all: true
+      - name: Check TRPC
+        uses: jtalk/url-health-check-action@v3
+        with:
+          url: http://localhost:3000/api/trpc/health
+          follow-redirect: true
+          max-attempts: 3
+          retry-delay: 5s
+          retry-all: true
+      - name: Show server logs
+        if: always()
+        run: docker logs server
+
+  deploy:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      - test
+      - smoke-test
+    environment: production
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - run: docker pull ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }}
+      # - run: flyctl deploy --image ${{ env.DOCKER_IMAGE_NAME }}:${{ env.DOCKER_IMAGE_TAG }} --image-label ${{ env.DOCKER_IMAGE_TAG }}
+      #   env:
+      #     FLY_API_TOKEN: ${{ secrets.FLY_DEPLOY_TOKEN }}

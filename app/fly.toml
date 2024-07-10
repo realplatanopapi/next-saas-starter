@@ -1,0 +1,27 @@
+app = 'next-saas-starter'
+primary_region = 'yyz'
+
+[deploy]
+  release_command = "pnpm db:migrate"
+
+[processes]
+server = "pnpm start"
+
+[http_service]
+  processes = ['server']
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  max_machines_running = 1
+
+
+[[statics]]
+guest_path = "/app/.next/static"
+url_prefix = "/_next/static"
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512

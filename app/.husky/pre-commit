@@ -1,0 +1,4 @@
+#!/usr/src/env sh
+
+cd app
+pnpm lint-staged
