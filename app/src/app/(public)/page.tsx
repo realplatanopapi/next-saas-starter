@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <Container p={10}>
       <Stack>
-        <Heading>Next.js SaaS Template</Heading>
+        <Heading>Next.js SaaS Starter</Heading>
         <Text>This is a Next.js SaaS template.</Text>
         <Box>
           <Button as={BareLink} colorScheme="primary" href={routes.auth()}>

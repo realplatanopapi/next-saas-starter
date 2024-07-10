@@ -5,7 +5,7 @@ import { TRPCProvider } from '@/ui/api/trpc-provider'
 import { ThemeProvider } from '@/ui/theme/theme-provider'
 
 export const metadata: Metadata = {
-  title: 'Next SaaS Template',
+  title: 'Next SaaS Starter',
 }
 
 export default function RootLayout(props: PropsWithChildren) {

@@ -1,4 +1,4 @@
-# Next SaaS Template
+# Next SaaS Starter
 
 My personal template for building full-stack SaaS apps with Next.js and TypeScript.
 
