@@ -35,7 +35,9 @@ Then, start the development server:
 pnpm dev
 ```
 
-The app should be available at http://localhost:3000.
+The app should be available at http://localhost:3000, where you should see something like this:
+
+<img width="420" alt="Screenshot 2024-07-09 at 11 54 24 PM" src="https://github.com/realplatanopapi/next-saas-starter/assets/6979137/2d5a3641-aa3c-4243-94db-11f67908d530">
 
 ### Setting up email authentication
 
